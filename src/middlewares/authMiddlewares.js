@@ -15,7 +15,7 @@ module.exports=(req,res,next)=>{
             }else{
                 
                 let email = decode["email"];
-                console.log(email);
+                let id = decode["id"];
                 req.headers.email = email;
                 next()
             }
