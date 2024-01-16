@@ -146,19 +146,38 @@ exports.profileUpdate = async (req, res) => {
     }
 };
 
+exports.profileDelete = async (req,res) =>{
+    try {
+        let userEmail = req.headers["email"];
+        let filter = { email : userEmail };
+        let update = { isDelete : true };
+        let result = await userModel.updateOne(filter,update);
+        res.status(200).json({
+            status : "success",
+            data : result
+        })
+    } catch (error) {
+        res.status(500).json({
+            status: "fail",
+            message: error.toString(),
+        });
+    }
+}
+
 
 exports.profileDetails = async (req, res) => {
     try {
-        let userID = new mongoose.Types.ObjectId(req.headers.id)
-        let filter = { _id: userID };
-        let result = await userModel.findOne(filter);
-        const data = result.toObject();
-        delete data.isDelete;
+        let userEmail = req.headers["email"];
+        console.log(userEmail)
+        let filter = {email:userEmail};
+        let result = await userModel.findOne(filter)
+        if(result.isDelete) throw new Error();
+        let data = result.toObject();
+        delete data.isDelete
         res.status(200).json({
-            status: "success",
-            data: data
-        });
-
+            status : "success",
+            data : data
+        })
     } catch (error) {
         res.status(500).json({
             status: "fail",
