@@ -2,6 +2,7 @@ const userModel = require("../models/userModel");
 const jwt = require("jsonwebtoken")
 require("dotenv").config()
 const bcrypt = require("bcrypt");
+const { default: mongoose, mongo } = require("mongoose");
 const saltRounds = 10;
 
 // registration 
@@ -123,9 +124,7 @@ exports.logout = async (req, res) => {
 
 exports.profileUpdate = async (req, res) => {
     try {
-        let userEmail = req.headers["email"]; // Corrected typo here
-        console.log(userEmail);
-        
+        let userEmail = req.headers["email"]; // Corrected typo here        
         let filter = { email: userEmail };
         let reqBody = req.body;
         let update = reqBody;
@@ -148,24 +147,18 @@ exports.profileUpdate = async (req, res) => {
 };
 
 
-exports.profileUpdate = async (req, res) => {
+exports.profileDetails = async (req, res) => {
     try {
-        let userEmail = req.headers["email"]; // Corrected typo here
-        console.log(userEmail);
-        
-        let filter = { email: userEmail };
-        let reqBody = req.body;
-        let update = reqBody;
-
-        // Using the `findOneAndUpdate` method to update a single document
-        let data = await userModel.findOneAndUpdate(filter, update, { new: true });
-        let userRes = data.toObject();
-        delete userRes.isDelete;
-
+        let userID = new mongoose.Types.ObjectId(req.headers.id)
+        let filter = { _id: userID };
+        let result = await userModel.findOne(filter);
+        const data = result.toObject();
+        delete data.isDelete;
         res.status(200).json({
             status: "success",
-            data: userRes
+            data: data
         });
+
     } catch (error) {
         res.status(500).json({
             status: "fail",
