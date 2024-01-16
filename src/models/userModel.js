@@ -24,6 +24,10 @@ const userSchema = new Schema({
     password : {
         type : String,
         trim : true
+    },
+    isDelete : {
+        type : Boolean,
+        required : true
     }
 },{timestamps:true,versionKey:false});
 
