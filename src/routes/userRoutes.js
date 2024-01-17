@@ -25,6 +25,7 @@ userRoute.post("/reset-password",userController.recoveryResetPassword);
 userRoute.post("/create-task",authMiddlewares,taskController.createTask);
 userRoute.put("/update-task/:id",authMiddlewares,taskController.updateTask);
 userRoute.delete("/delete-task/:id",authMiddlewares,taskController.deleteTask);
+userRoute.get("/task-status/:status",authMiddlewares,taskController.listByStatusTask);
 
 
 

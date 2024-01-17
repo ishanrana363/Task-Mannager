@@ -73,3 +73,26 @@ exports.deleteTask = async (req, res) => {
         });
     }
 };
+
+exports.listByStatusTask = async (req,res) =>{
+    try {
+        let userEmail = req.headers["email"];
+        let taskStatus = req.params.status;
+        let filter = {
+            email : userEmail,
+            status : taskStatus,
+            isDelete : false
+        }
+        let result = await taskModel.find(filter)
+    res.status(200).json({
+        status: "success",
+        data: result
+        
+    });
+    } catch (error) {
+        res.status(500).json({
+            status: "fail",
+            message: error.toString()
+        });
+    }
+}
