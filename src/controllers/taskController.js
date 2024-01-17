@@ -84,9 +84,16 @@ exports.listByStatusTask = async (req,res) =>{
             isDelete : false
         }
         let result = await taskModel.find(filter)
+        const resData = Array.isArray(result) && result.length > 0
+            ? result.map(doc => {
+                const taskObject = doc.toObject();
+                delete taskObject.isDelete;
+                return taskObject
+            })
+            : [];
     res.status(200).json({
         status: "success",
-        data: result
+        data: resData
         
     });
     } catch (error) {
@@ -96,3 +103,23 @@ exports.listByStatusTask = async (req,res) =>{
         });
     }
 }
+
+exports.statusByCount = async (req, res) => {
+    try {
+        let email = req.headers["email"];
+        let result = await taskModel.aggregate([
+            { $match: { email: email } },
+            { $group: { _id: "$status", sum: { $count: {} } } }
+        ]);
+
+        res.status(200).json({
+            status: "success",
+            data: result
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: "fail",
+            message: error.toString()
+        });
+    }
+};
