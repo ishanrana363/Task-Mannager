@@ -2,16 +2,17 @@ const userModel = require("../models/userModel");
 const jwt = require("jsonwebtoken")
 require("dotenv").config()
 const bcrypt = require("bcrypt");
-const { default: mongoose, mongo } = require("mongoose");
+const { default: mongoose } = require("mongoose");
+const SendEmailUtility = require("../utility/emailHelper")
 const saltRounds = 10;
-
+const otpModel = require("../models/otpModel")
 // registration 
-
 
 exports.registration = async(req,res) =>{
     try {
+        
         let email = await userModel.findOne({ email: req.body.email });
-        if(email) return res.status(400).send( " User email already exists " );
+        // if(email) return res.status(400).send( " User email already exists " );
         bcrypt.hash(req.body.password, saltRounds, async(err, hash)=> {
             let newUser = new userModel({
                 email : req.body.email,
@@ -124,13 +125,16 @@ exports.logout = async (req, res) => {
 
 exports.profileUpdate = async (req, res) => {
     try {
-        let userEmail = req.headers["email"]; // Corrected typo here        
-        let filter = { email: userEmail };
+        let userEmail = req.headers["email"];
+        console.log(userEmail)
+         // Corrected typo here        
+        let filter = { email: userEmail};
         let reqBody = req.body;
         let update = reqBody;
 
         // Using the `findOneAndUpdate` method to update a single document
         let data = await userModel.findOneAndUpdate(filter, update, { new: true });
+        if(data.isDelete) throw new Error()
         let userRes = data.toObject();
         delete userRes.isDelete;
 
@@ -168,8 +172,8 @@ exports.profileDelete = async (req,res) =>{
 exports.profileDetails = async (req, res) => {
     try {
         let userEmail = req.headers["email"];
-        console.log(userEmail)
         let filter = {email:userEmail};
+        if(!userEmail) return res.status(404).send( " Profile not found " )
         let result = await userModel.findOne(filter)
         if(result.isDelete) throw new Error();
         let data = result.toObject();
@@ -185,3 +189,92 @@ exports.profileDetails = async (req, res) => {
         });
     }
 };
+
+
+exports.recoveryVerifyEmail = async (req,res) =>{
+    
+    try {
+        let email = req.params.email;
+        let otpCode = Math.floor(100000 + Math.random() * 900000 );
+        let emailText = "Your verification code is = " + otpCode;
+        let emailSubject = "Task manager verification code";
+        let result = await userModel.find({email:email}).count();
+        if(result===1){
+            // verify email
+            await SendEmailUtility(email,emailText,emailSubject);
+            await otpModel.create({email:email,otp:otpCode});
+            res.status(200).json({
+                status : "Success",
+                data : "6 Digit verification code has been"
+            })
+        }else {
+            res.status(401).json({
+                status : "fail"
+            })
+        }
+    }catch (e){
+        res.status(401).json({
+            status : "unauthorized",
+            error : e.toString()
+        })
+    }
+}
+
+
+
+exports.recoveryVerifyOtp = async (req,res) =>{
+    try {
+        let email = req.params.email;
+        let status = 0;
+        let otpCode = req.params.otp;
+        let statusUpdate = 1;
+        let result = await otpModel.findOne({email:email,otp:otpCode,status:status}).count();
+        if(result===1){
+            await otpModel.updateOne({email:email,otp:otpCode,status:status},{status:statusUpdate});
+            res.status(200).json({
+                status:"success",
+                message : " user verification successfully "
+            })
+        }else{
+            res.status(401).json({
+                status:"success",
+                message : " user not found "
+            })
+        }
+    } catch (error) {
+        res.status(401).json({
+            status : "unauthorized",
+            error : error.toString()
+        })
+    }
+        
+}
+
+exports.recoveryResetPassword = async (req,res) =>{
+    try {
+        let email = req.body["email"];
+        let otpCode = req.body["otp"];
+        let newPassword = req.body["password"];
+        let statusUpdate = 1;
+        let result = await otpModel.updateOne({email:email,otp:otpCode,status:statusUpdate}).count();
+        if(result===1){
+            const hashPassword = await bcrypt.hash(newPassword, saltRounds)
+            await userModel.updateOne({email:email},{ password:hashPassword });
+            res.status(200).json({
+                status:"success",
+                message : " password reset successfully "
+            })
+        }else{
+            res.status(401).json({
+                status:"success",
+                message : " user not found "
+            })
+        }
+    } catch (error) {
+        res.status(401).json({
+            status : "unauthorized",
+            error : error.toString()
+        })
+    }
+    
+}
