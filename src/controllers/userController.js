@@ -126,7 +126,6 @@ exports.logout = async (req, res) => {
 exports.profileUpdate = async (req, res) => {
     try {
         let userEmail = req.headers["email"];
-        console.log(userEmail)
          // Corrected typo here        
         let filter = { email: userEmail};
         let reqBody = req.body;
@@ -191,34 +190,53 @@ exports.profileDetails = async (req, res) => {
 };
 
 
-exports.recoveryVerifyEmail = async (req,res) =>{
-    
+// const userModel = require('./userModel'); // Import your userModel
+// const otpModel = require('./otpModel');   // Import your otpModel
+// const SendEmailUtility = require('./SendEmailUtility'); // Import your email utility function
+
+exports.recoveryVerifyEmail = async (req, res) => {
     try {
-        let email = req.params.email;
-        let otpCode = Math.floor(100000 + Math.random() * 900000 );
-        let emailText = "Your verification code is = " + otpCode;
-        let emailSubject = "Task manager verification code";
-        let result = await userModel.find({email:email}).count();
-        if(result===1){
-            // verify email
-            await SendEmailUtility(email,emailText,emailSubject);
-            await otpModel.create({email:email,otp:otpCode});
+        const email = req.params.email;
+        const code = Math.floor(100000 + Math.random() * 900000);
+        const emailText = `Your verification code is: ${code}`;
+        const emailSub = "Your verification";
+        let status = 0
+
+        // Check if the email exists in userModel
+        const user = await userModel.findOne({ email });
+
+        if (user) {
+            // Send email
+            await SendEmailUtility(email, emailText, emailSub);
+
+            // Find the existing OTP or create a new one
+            const otp = await otpModel.findOneAndUpdate(
+                { email },
+                { $set: { otp: code,status:status    } },
+                { upsert: true, new: true }
+            );
+
             res.status(200).json({
-                status : "Success",
-                data : "6 Digit verification code has been"
-            })
-        }else {
-            res.status(401).json({
-                status : "fail"
-            })
+                status: "success",
+                message: "6-digit OTP has been sent",
+                data: otp,
+            });
+        } else {
+            res.status(404).json({
+                status: "fail",
+                message: "Email not found",
+            });
         }
-    }catch (e){
-        res.status(401).json({
-            status : "unauthorized",
-            error : e.toString()
-        })
+    } catch (error) {
+        res.status(500).json({
+            status: "fail",
+            message: error.toString(),
+        });
     }
-}
+};
+
+
+
 
 
 
@@ -238,7 +256,7 @@ exports.recoveryVerifyOtp = async (req,res) =>{
         }else{
             res.status(401).json({
                 status:"success",
-                message : " user not found "
+                message : " otp not found "
             })
         }
     } catch (error) {
@@ -250,31 +268,40 @@ exports.recoveryVerifyOtp = async (req,res) =>{
         
 }
 
-exports.recoveryResetPassword = async (req,res) =>{
+exports.recoveryResetPassword = async (req, res) => {
     try {
-        let email = req.body["email"];
-        let otpCode = req.body["otp"];
-        let newPassword = req.body["password"];
-        let statusUpdate = 1;
-        let result = await otpModel.updateOne({email:email,otp:otpCode,status:statusUpdate}).count();
-        if(result===1){
-            const hashPassword = await bcrypt.hash(newPassword, saltRounds)
-            await userModel.updateOne({email:email},{ password:hashPassword });
+        const newPass = req.body.password;
+        const email = req.body.email;
+        const otpCode = req.body.otp;
+        const statusUpdate = 1;
+
+        // Check if the OTP is valid for the given email and status
+        const result = await otpModel.findOneAndUpdate(
+            { email, otp: otpCode,status: statusUpdate}, // Assuming status 0 means the OTP is not yet used
+            { new: true }
+        ).countDocuments();
+        if (result === 1) {
+            // OTP is valid, update the user's password
+            const hashPassword = bcrypt.hashSync(newPass,saltRounds)
+            await userModel.updateOne({ email }, { password: hashPassword });
+
             res.status(200).json({
-                status:"success",
-                message : " password reset successfully "
-            })
-        }else{
+                status: "success",
+                data: "Password reset successful",
+            });
+        } else {
+            // Invalid OTP or user not found
             res.status(401).json({
-                status:"success",
-                message : " user not found "
-            })
+                status: "fail",
+                data: "Unauthorized or Invalid OTP",
+            });
         }
     } catch (error) {
-        res.status(401).json({
-            status : "unauthorized",
-            error : error.toString()
-        })
+        // Handle other errors
+        console.error("Error:", error);
+        res.status(500).json({
+            status: "fail",
+            error: error.toString(),
+        });
     }
-    
-}
+};

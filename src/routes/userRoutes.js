@@ -15,7 +15,7 @@ userRoute.delete("/profile-Delete",authMiddlewares,userController.profileDelete)
 userRoute.get("/profileDetails",authMiddlewares,userController.profileDetails);
 
 
-userRoute.get("/recovery-verif-email/:email",userController.recoveryVerifyEmail);
+userRoute.post("/recovery-verif-email/:email",userController.recoveryVerifyEmail);
 userRoute.get("/recovery-verif-otp/:email/:otp",userController.recoveryVerifyOtp);
 userRoute.post("/reset-password",userController.recoveryResetPassword);
 
